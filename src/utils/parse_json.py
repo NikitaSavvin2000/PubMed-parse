@@ -3,6 +3,40 @@ from collections import OrderedDict
 import time
 
 path = '/Users/nikitasavvin/Desktop/AIDAM/PubMed-parse/src/downloads_json/PMC16145.xml'
+from crossref.restful import Works
+from crossref.restful import Works
+from habanero import Crossref
+# Инициализируем объект Works
+works = Works()
+
+
+def get_publication_date_by_doi(doi):
+    try:
+        work = works.doi(doi)
+        publication_date = work['issued']['date-parts'][0]
+
+        return '-'.join(map(str, publication_date))
+    except Exception as e:
+        print("Ошибка при получении данных:", str(e))
+
+        return None
+
+def get_publication_date_by_title(title):
+    try:
+        cr = Crossref()
+        doi = cr.works(query=title)['message']['items'][0]['DOI']
+        works = Works()
+        work = works.doi(doi)
+        publication_date = work['issued']['date-parts'][0]
+        publication_date = '-'.join(map(str, publication_date))
+        return publication_date, doi
+    except Exception as e:
+        print("Ошибка при получении данных:", str(e))
+
+        return None, None
+    raise
+
+
 
 def parse_json(path):
 
@@ -40,8 +74,8 @@ def parse_json(path):
                         section_types}
     references = {}
     for part in range(len_parts):
-        # print(parts[part])
         infons = parts[part]['infons']
+        # print(infons)
         inform_keys = infons.keys()
         text = parts[part]['text']
         section_type = infons.get('section_type', None)
@@ -59,7 +93,8 @@ def parse_json(path):
                     key, value = parts_name.split(':')
                     article_author[key] = value
                     autors.append(article_author)
-            doi = infons.get('article-id_doi', 'None')
+
+            doi = infons.get('article-id_doi', None)
             article_id_pmc = infons.get('article-id_pmc', None)
             article_id_pmid = infons.get('article-id_pmid', None)
             article_id_publisher = infons.get('article-id_publisher-id', None)
@@ -86,6 +121,11 @@ def parse_json(path):
             abstract = abstract.replace('  ', ' ')
     full_text = full_text[2:]
     result_dict = {}
+    if doi is not None:
+        pub_date = get_publication_date_by_doi(doi)
+    else:
+        pub_date, doi = get_publication_date_by_title(article_title)
+
     result_dict['doi'] = doi
     result_dict['article_id_pmc'] = article_id_pmc
     result_dict['article_id_pmid'] = article_id_pmid
@@ -110,4 +150,4 @@ if __name__ == '__main__':
     execution_time = end_time - start_time
     print("Execution time:", execution_time, "seconds")
 
-    print(result_dict['autors'])
+    print(result_dict['pub_date'])
